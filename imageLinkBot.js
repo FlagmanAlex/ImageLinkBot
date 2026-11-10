@@ -23,6 +23,9 @@ const FLAGMANALEX_CHAT_ID = process.env.FLAGMANALEX_CHAT_ID;
 const BD_TOKEN = process.env.BD_TOKEN;
 const HOST = process.env.HOST || 'http://localhost';
 const PORT = process.env.PORT || 5050;
+// Адрес Bot API. С серверов в РФ api.telegram.org режется — тогда TELEGRAM_API_URL указывает на
+// посредника (Cloudflare Worker tg-relay из репозитория warehouse, server/deploy/telegram-relay-worker.js).
+const TELEGRAM_API_URL = (process.env.TELEGRAM_API_URL || 'https://api.telegram.org').trim().replace(/\/+$/, '');
 const IMAGE_DIR = path_1.default.resolve(__dirname, './image');
 if (!BOT_TOKEN || !BD_TOKEN || !FLAGMANALEX_CHAT_ID) {
     throw new Error('Отсутствуют обязательные переменные окружения!');
@@ -44,7 +47,7 @@ const SaveLogSchema = new mongoose_1.default.Schema({
     fileUrl: { type: String },
 });
 const SaveLog = mongoose_1.default.model('SaveLog', SaveLogSchema, 'SaveLog');
-const bot = new node_telegram_bot_api_1.default(BOT_TOKEN, { polling: true });
+const bot = new node_telegram_bot_api_1.default(BOT_TOKEN, { polling: true, baseApiUrl: TELEGRAM_API_URL });
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     bot.sendMessage(chatId, 'Добро пожаловать в загрузчик картинок. Пришлите мне картинку, а я отдам Вам ссылку на нее.');
@@ -61,7 +64,7 @@ bot.on('photo', (msg) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             const file = yield bot.getFile(fileId);
             const fileName = Date.now();
-            const tgUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+            const tgUrl = `${TELEGRAM_API_URL}/file/bot${BOT_TOKEN}/${file.file_path}`;
             const fileUrl = yield (0, file_1.saveImage)(tgUrl, `${userId}-${fileName}`);
             bot.sendMessage(chatId, `Вот Ваша ссылка на фото: ${fileUrl}`);
             if (FLAGMANALEX_CHAT_ID) {

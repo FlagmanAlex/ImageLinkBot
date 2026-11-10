@@ -11,31 +11,25 @@
 исходники на TypeScript не сохранились. `package-lock.json` с сервера в репозиторий не попал —
 на сервере зависимости уже установлены.
 
-## На сервере (VPS api.wwms.ru, с 2026-10-19)
+## На сервере (VDSina Москва `138.16.178.157`, с 2026-11-10 — после атаки на Beget)
 
 | | |
 |---|---|
-| Код | `/var/www/imagelinkbot/server` |
+| Код | `/var/www/imagelinkbot/server` — клон этого репозитория (`git pull` для обновления) |
 | Картинки | `/var/www/imagelinkbot/image` → `https://api.wwms.ru/imagelinkbot/image/…` |
+| Старые картинки | `/var/www/html/image` → `https://api.wwms.ru/image/…` |
 | Процесс | pm2 пользователя `imagelinkbot` (systemd `pm2-imagelinkbot`), конфиг — `ecosystem.config.cjs` |
-| База | `IMAGE`, учётка `imagelinkbot` (`readWrite` только на `IMAGE`) |
-| Старые картинки | `/var/www/html/image` (общая папка, отдаётся как раньше) |
+| База | `IMAGE` на `127.0.0.1` (один узел `rs0`), учётка `imagelinkbot` в `admin` (`readWrite` на `IMAGE`) |
+| Telegram | `TELEGRAM_API_URL` — посредник `tg-relay` (с сервера в РФ `api.telegram.org` режется) |
 
-nginx (`/etc/nginx/sites-available/default`, блок `server` для `api.wwms.ru` на 443):
-
-```nginx
-location /imagelinkbot/image/ {
-    alias /var/www/imagelinkbot/image/;
-}
-```
+nginx — `/etc/nginx/snippets/imagelinkbot.conf`, подключён в блоке `wwms-api`. Бэкап — общий
+`wwms-backup.sh` (репозиторий warehouse, `server/deploy/`): база `IMAGE`, `imagelinkbot-image`,
+`html-image`, `.env`. Пошагово — warehouse `server/deploy/RESTORE.md`, раздел 12.
 
 Команды (от root):
 
 ```bash
 sudo -u imagelinkbot -H sh -c 'cd ~ && pm2 list'
 sudo -u imagelinkbot -H sh -c 'cd ~ && pm2 logs imagelinkbot --lines 50 --nostream'
-sudo -u imagelinkbot -H sh -c 'cd ~ && pm2 restart imagelinkbot'
+sudo -u imagelinkbot -H sh -c 'cd /var/www/imagelinkbot/server && git pull -q && npm install --omit=dev && pm2 restart imagelinkbot'
 ```
-
-Обновить код: скопировать файлы из репозитория в `/var/www/imagelinkbot/server`, затем
-`pm2 restart`. Новые зависимости — `sudo -u imagelinkbot -H sh -c 'cd /var/www/imagelinkbot/server && npm install'`.
